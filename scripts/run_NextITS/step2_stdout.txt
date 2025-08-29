@@ -1,0 +1,21 @@
+./5001_run_step2_noITSx.sh
+# nextflow run vmikk/NextITS -r main   -with-singularity /opt/sif_files/vmiks_nextits_0.8.2.sif   -c /data/splaisan/NC_projects/5001_SWeckx_NextITS/NextITS/conf/wallace.config   --step 'Step2'   --data_path /data/splaisan/NC_projects/5001_SWeckx_NextITS/NextITS_analysis_noITSx/nextits_Step1  --outdir /data/splaisan/NC_projects/5001_SWeckx_NextITS/NextITS_analysis_noITSx/nextits_Step2   --clustering_method 'vsearch'   --otu_id 0.98   --storagemode 'copy'
+
+ N E X T F L O W   ~  version 25.04.4
+
+Launching `https://github.com/vmikk/NextITS` [loquacious_darwin] DSL2 - revision: 5540250859 [main]
+
+executor >  local (6)
+[50/8ed809] process > S2:aggregate_sequences [100%] 1 of 1 ✔
+[47/c3d202] process > S2:dereplication       [100%] 1 of 1 ✔
+[fc/b8cfbe] process > S2:cluster_vsearch     [100%] 1 of 1 ✔
+[34/0ce599] process > S2:merge_uc            [100%] 1 of 1 ✔
+[18/e91fb6] process > S2:summarize           [100%] 1 of 1 ✔
+[f0/edd4f1] process > S2:lulu                [100%] 1 of 1 ✔
+Pipeline completed at : 2025-06-18T11:20:11.827721213+02:00
+Duration              : 1h 5m 20s
+Execution status      : All done!
+Completed at: 18-Jun-2025 11:20:12
+Duration    : 1h 5m 20s
+CPU hours   : 8.6
+Succeeded   : 6

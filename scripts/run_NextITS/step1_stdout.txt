@@ -1,0 +1,88 @@
+$ ./5001_run_step1_noITSx.sh
+# nextflow run vmikk/NextITS -r main   -with-singularity /opt/sif_files/vmiks_nextits_0.8.2.sif   -c /data/splaisan/NC_projects/5001_SWeckx_NextITS/NextITS/conf/wallace.config   --step Step1   --input /data/splaisan/NC_projects/5001_SWeckx_NextITS/fastq_ITS   --demultiplexed true   --primer_forward TCCGTAGGTGAACCTGC   --primer_reverse CCTSCSCTTANTDATATGC   --primer_mismatches 2   --primer_foverlap 15   --primer_roverlap 17   --chimera_db /data/splaisan/biodata/NextITS_chimeraDB/UN95_chimera.udb   --its_region 'none'   --ITSx_tax 'all'   --ITSx_evalue 0.1   --ITSx_partial 0   --outdir /data/splaisan/NC_projects/5001_SWeckx_NextITS/NextITS_analysis_noITSx/nextits_Step1/run1   -work-dir /data/splaisan/NC_projects/5001_SWeckx_NextITS/NextITS_analysis_noITSx/workdir   --storagemode 'copy'
+
+ N E X T F L O W   ~  version 25.04.4
+
+Launching `https://github.com/vmikk/NextITS` [nice_banach] DSL2 - revision: 5540250859 [main]
+
+
+
+------------------------------------------------------
+                    𝗡𝗲𝘅𝘁𝗜𝗧𝗦 v1.0.0-g5540250
+        SSU     ITS1    5.8S   ITS2     LSU
+     ▒▒▒▒▒▒▒▒▒░░░░░░░░░▒▒▒▒▒░░░░░░░░░░▒▒▒▒▒▒▒▒▒▒▒▒
+------------------------------------------------------
+Core Nextflow options
+  revision       : main
+  containerEngine: singularity
+  container      : /opt/sif_files/vmiks_nextits_0.8.2.sif
+  launchDir      : /mnt/data/splaisan/NC_projects/5001_SWeckx_NextITS
+  workDir        : /data/splaisan/NC_projects/5001_SWeckx_NextITS/NextITS_analysis_noITSx/workdir
+  projectDir     : /home/splaisan/.nextflow/assets/vmikk/NextITS
+  profile        : standard
+  configFiles    : /home/splaisan/.nextflow/assets/vmikk/NextITS/nextflow.config, /data/splaisan/NC_projects/5001_SWeckx_NextITS/NextITS/conf/wallace.config
+
+Input/output options
+  input          : /data/splaisan/NC_projects/5001_SWeckx_NextITS/fastq_ITS
+  outdir         : /data/splaisan/NC_projects/5001_SWeckx_NextITS/NextITS_analysis_noITSx/nextits_Step1/run1
+  step           : Step1
+
+Demultiplexing
+  demultiplexed  : true
+
+Primer trimming
+  primer_forward : TCCGTAGGTGAACCTGC
+  primer_roverlap: 17
+
+Chimera removal
+  chimera_db     : /data/splaisan/biodata/NextITS_chimeraDB/UN95_chimera.udb
+
+ITS extraction
+  its_region     : none
+
+Step 2 options
+  data_path      : /mnt/data/splaisan/NC_projects/5001_SWeckx_NextITS/Step1_Results
+
+Generic options
+  storagemode    : copy
+  tracedir       : /data/splaisan/NC_projects/5001_SWeckx_NextITS/NextITS_analysis_noITSx/nextits_Step1/run1/pipeline_info
+  max_cpus       : 200
+  max_memory     : 192.GB
+  max_time       : 24.h
+
+!! Only displaying parameters that differ from the pipeline defaults !!
+------------------------------------------------------------------------------------------------------------
+
+WARN: Found unexpected parameters:
+* --config_profile_description: adapted to wallace local resources
+* --config_profile_name: wallace profile
+- Ignore this warning: params.schema_ignore_params = "config_profile_description,config_profile_name" 
+
+executor >  local (2494)
+[d2/bc6bb1] process > S1:disambiguate                            [100%] 1 of 1 ✔
+[cd/afe6bd] process > S1:qc_se (540_ITS_APB116_F5C1_1m)          [100%] 356 of 356 ✔
+[2c/158f85] process > S1:primer_check (540_ITS_APB116_F5C1_1m)   [100%] 356 of 356 ✔
+[a4/6aa3b4] process > S1:trim_primers (540_ITS_APB116_F5C1_1m)   [100%] 354 of 354 ✔
+[cb/3699ed] process > S1:seq_qual                                [100%] 1 of 1 ✔
+[82/34d0d6] process > S1:homopolymer (540_ITS_APB116_F5C1_1m)    [100%] 354 of 354 ✔
+[db/45ad9b] process > S1:chimera_ref (540_ITS_APB116_F5C1_1m)    [100%] 354 of 354 ✔
+[9e/aadd17] process > S1:chimera_denovo (540_ITS_APB116_F5C1_1m) [100%] 354 of 354 ✔
+[b1/b05729] process > S1:chimera_rescue                          [100%] 1 of 1 ✔
+[0a/85a2f4] process > S1:chimera_denovo_agg                      [100%] 1 of 1 ✔
+[c3/f342e2] process > S1:glob_derep                              [100%] 1 of 1 ✔
+[51/89adff] process > S1:pool_seqs                               [100%] 1 of 1 ✔
+[c1/fa7060] process > S1:otu_clust                               [100%] 1 of 1 ✔
+[cf/67d2a3] process > S1:otu_tab                                 [100%] 1 of 1 ✔
+[3e/47cfd1] process > S1:tj                                      [100%] 1 of 1 ✔
+[53/b656c7] process > S1:prep_seqtab                             [100%] 1 of 1 ✔
+[34/39e164] process > S1:read_counts (351)                       [100%] 356 of 356 ✔
+Pipeline completed at : 2025-06-17T19:43:23.403479955+02:00
+Duration              : 3h 27m 45s
+Execution status      : All done!
+Completed at: 17-Jun-2025 19:43:25
+Duration    : 3h 27m 47s
+CPU hours   : 197.6
+Succeeded   : 2'494
+
+
+# Step1 completed, complete results are in /data/splaisan/NC_projects/5001_SWeckx_NextITS/NextITS_analysis_noITSx/final_results/Step1_results

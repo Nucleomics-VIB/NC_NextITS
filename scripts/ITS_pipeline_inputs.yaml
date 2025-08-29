@@ -1,5 +1,15 @@
 # ITS pipeline input configuration
 
+# NextITS primers
+# forward primer default to ITS9MUNngs:
+#forward_primer: "GTACACACCGCCCGTCG"
+#forward_primer_info: "(ITS9MUNngs) specific to the SSU rDNA subunit"
+forward_primer: "TCCGTAGGTGAACCTGC"
+forward_primer_info: "(ITS1) specific to the SSU rDNA subunit"
+# reverse primer default to ITS4ngsUni
+reverse_primer: "CCTSCSCTTANTDATATGC"
+reverse_primer_info: "(ITS4ngsUni) specific to the LSU rDNA subunit"
+
 # Path to classification data
 classification_info_file: "classification_results/classification_info.txt"
 otu_count_file: "OTU_table_LULU.txt.gz"  # gzipped TSV file with OTU counts
