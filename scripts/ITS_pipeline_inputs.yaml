@@ -1,0 +1,13 @@
+# ITS pipeline input configuration
+
+# Path to classification data
+classification_info_file: "classification_results/classification_info.txt"
+otu_count_file: "OTU_table_LULU.txt.gz"  # gzipped TSV file with OTU counts
+ASV_sequences: "OTUs_LULU.fa"  # QIIME2 OTU sequences artifact
+taxonomy_file: "classification_results/sklearn_classified_OTUs_LULU.tsv"  # QIIME2 taxonomy artifact
+
+# sample information and grouping
+sample_metadata_file: "samples.csv"  # CSV file with sample metadata
+grouping_column: "smplgrp"  # Column in sample metadata for grouping/coloring
+
+# Add more input paths or parameters as needed

@@ -1,0 +1,227 @@
+---
+title: "ITS Pipeline Analysis Report"
+output: html_document
+params:
+  config_yaml: "../ITS_pipeline_inputs.yaml"
+---
+
+```{r setup, include=FALSE}
+library(yaml)
+library(tidyverse)
+library(phyloseq)
+library(biomformat)
+library(knitr)
+library(DT)
+library(ComplexHeatmap)
+library(viridis)
+library(Biostrings)
+library(pheatmap)
+
+# Source import_biom.R for custom import functions
+source("import_biom.R")
+
+# Load config from YAML
+config <- yaml::read_yaml(params$config_yaml)
+```
+
+```{r initialization, include=FALSE}
+# extract variables
+otu_count_file <- config$otu_count_file
+taxonomy_file <- config$taxonomy_file
+sample_metadata_file <- config$sample_metadata_file
+grouping_column <- config$grouping_column
+output_dir <- config$output_dir
+classification_info_file <- config$classification_info_file
+ASV_sequences <- config$ASV_sequences
+
+# Read sample metadata
+sample_metadata <- read_csv(sample_metadata_file, show_col_types = FALSE)
+
+# Read OTU table
+otu_table_df <- read_tsv(otu_count_file, show_col_types = FALSE)
+
+# Read taxonomy
+taxonomy_df <- read_tsv(taxonomy_file, show_col_types = FALSE)
+
+# Read sequences
+seqs <- Biostrings::readDNAStringSet(ASV_sequences)
+seq_lengths <- width(seqs)
+seq_length_df <- tibble(OTU=names(seqs), Length=seq_lengths)
+
+# Prepare ASV table (rows: ASVs, columns: samples)
+asv_mat <- as.matrix(otu_table_df[,-1])
+rownames(asv_mat) <- otu_table_df[["OTU"]]
+
+# Prepare taxonomy table (adapted to input header)
+tax_mat <- as.data.frame(taxonomy_df[, "Taxon", drop=FALSE])
+rownames(tax_mat) <- taxonomy_df[["Feature ID"]]
+colnames(tax_mat) <- "Taxonomy"
+
+# Split taxonomy string into columns for phyloseq
+# This will create columns: Kingdom, Phylum, Class, Order, Family, Genus, Species, Strain
+# and remove prefixes like 'g__' and underscores
+tax_split <- strsplit(as.character(tax_mat$Taxonomy), ";")
+tax_matrix <- do.call(rbind, lapply(tax_split, function(x) trimws(x)))
+num_ranks <- max(sapply(tax_split, length))
+rank_names <- c("Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species", "Strain")[1:num_ranks]
+colnames(tax_matrix) <- rank_names
+rownames(tax_matrix) <- rownames(tax_mat)
+for (i in seq_len(ncol(tax_matrix))) {
+  tax_matrix[, i] <- gsub(".*__", "", tax_matrix[, i])
+  tax_matrix[, i] <- gsub("_", " ", tax_matrix[, i])
+}
+
+# Extract genus from taxonomy (assumes taxonomy is semicolon separated)
+tax_mat$Genus <- sapply(strsplit(as.character(tax_mat$Taxonomy), ";"), function(x) {
+  if (length(x) >= 6) {
+    trimws(x[6])
+  } else {
+    NA
+  }
+})
+
+
+# Ensure sample names match and reorder metadata to match OTU table columns
+otu_samples <- colnames(asv_mat)
+meta_samples <- sample_metadata$sample_name
+if (!all(otu_samples %in% meta_samples)) {
+  stop("Sample names in OTU table do not match those in metadata. Please check your input files.")
+}
+
+# Reorder and subset metadata to match OTU table columns exactly
+sample_metadata <- sample_metadata[match(otu_samples, meta_samples), , drop=FALSE]
+rownames(sample_metadata) <- otu_samples  # Set rownames to match OTU matrix columns
+
+# Set rownames of metadata to sample_name column
+sample_metadata <- as.data.frame(sample_metadata)
+rownames(sample_metadata) <- sample_metadata$sample_name
+
+# Ensure OTU table columns are named with sample IDs
+colnames(asv_mat) <- rownames(sample_metadata)
+asv_mat <- as.matrix(asv_mat)
+mode(asv_mat) <- "numeric"
+
+# Final checks for sample name uniqueness and type before phyloseq object creation
+if (any(duplicated(colnames(asv_mat)))) {
+  stop("Duplicate sample names found in OTU table columns.")
+}
+if (any(duplicated(rownames(sample_metadata)))) {
+  stop("Duplicate sample names found in metadata rownames.")
+}
+colnames(asv_mat) <- as.character(colnames(asv_mat))
+rownames(sample_metadata) <- as.character(rownames(sample_metadata))
+
+
+# Create phyloseq object
+OTU <- otu_table(asv_mat, taxa_are_rows=TRUE)
+TAX <- tax_table(tax_matrix)
+SAMPLES <- sample_data(sample_metadata)
+physeq <- phyloseq(OTU, TAX, SAMPLES)
+
+# Basic summary
+# print(physeq)
+
+# Agglomerate at genus level
+physeq_genus <- tax_glom(physeq, taxrank = "Genus")
+
+# Taxa barplot (genus level, filter genus to keep 95% of total counts)
+taxa_sums_vec <- taxa_sums(physeq_genus)
+total_counts <- sum(taxa_sums_vec)
+sorted_taxa <- sort(taxa_sums_vec, decreasing = TRUE)
+cumsum_taxa <- cumsum(sorted_taxa)
+cutoff_index <- which(cumsum_taxa >= 0.95 * total_counts)[1]
+cutoff_value <- sorted_taxa[cutoff_index]
+physeq_genus_filtered <- prune_taxa(taxa_sums_vec >= cutoff_value, physeq_genus)
+
+# plot
+taxa_barplot <- plot_bar(physeq_genus_filtered, fill="Genus", x=grouping_column) + theme(legend.position = "none")
+taxa_barplot
+
+# Save taxa barplot to PDF
+ggsave(file.path("../", "taxa_barplot.pdf"), taxa_barplot, width=8, height=5)
+
+# Heatmap (filtered, no legend, genus level, ordered by similarity)
+abund_mat <- as(otu_table(physeq_genus_filtered), "matrix")
+if(!taxa_are_rows(physeq_genus_filtered)) {
+  abund_mat <- t(abund_mat)
+}
+# Get genus-level taxonomy labels for each OTU (show only Genus and parent Family)
+get_genus_label <- function(tax_row) {
+  fam <- ifelse(!is.na(tax_row[5]), tax_row[5], "") # Family
+  gen <- ifelse(!is.na(tax_row[6]), tax_row[6], "") # Genus
+  paste(fam, gen, sep = "; ")
+}
+
+genus_labels <- apply(as.matrix(tax_table(physeq_genus_filtered)), 1, get_genus_label)
+rownames(abund_mat) <- genus_labels
+
+# Use sample labels for x-axis in heatmap
+if ("label" %in% colnames(sample_metadata)) {
+  colnames(abund_mat) <- sample_metadata[colnames(abund_mat), "label"]
+}
+
+# --- Add sample group annotation for heatmap ---
+if ("smplgrp" %in% colnames(sample_metadata)) {
+  sample_labels <- colnames(abund_mat)
+  # Map sample labels to sample_name
+  sample_name_for_label <- setNames(rownames(sample_metadata), sample_metadata$label)
+  # Get smplgrp for each sample label
+  smplgrp_vec <- sample_metadata[sample_name_for_label[sample_labels], "smplgrp"]
+  annotation_col <- data.frame(Group = smplgrp_vec)
+  rownames(annotation_col) <- sample_labels
+  # Set colors for groups
+  group_levels <- unique(annotation_col$Group)
+  group_colors <- setNames(viridis::viridis(length(group_levels)), group_levels)
+  annotation_colors <- list(Group = group_colors)
+} else {
+  annotation_col <- NULL
+  annotation_colors <- NULL
+}
+
+# Order samples and taxa by hierarchical clustering
+# Save heatmap to PDF with annotation
+pheatmap(
+  abund_mat,
+  cluster_rows = TRUE,
+  cluster_cols = TRUE,
+  color = viridis::viridis(100),
+  show_rownames = TRUE,
+  show_colnames = TRUE,
+  main = "Genus-level abundance heatmap (ordered by similarity, ASV)",
+  legend = FALSE,
+  fontsize_row = 8,
+  fontsize_col = 6,
+  annotation_col = annotation_col,
+  annotation_colors = annotation_colors,
+  filename = file.path("../", "genus_heatmap.pdf"),
+  width = 16,
+  height = 6
+)
+
+# Ordination (PCoA)
+ord <- ordinate(physeq, method="PCoA", distance="bray")
+ordination_plot <- plot_ordination(physeq, ord, color=grouping_column)
+ordination_plot
+
+# Save ordination plot to PDF
+ggsave(file.path("../", "ordination_plot.pdf"), ordination_plot, width=7, height=5)
+
+# ASV sequence length distribution
+asv_length_plot <- ggplot(seq_length_df, aes(x=Length)) +
+  geom_histogram(binwidth=10, fill="steelblue", color="black") +
+  labs(title="ASV Sequence Length Distribution", x="Sequence Length (bp)", y="Count")
+
+asv_length_plot
+
+# Save ASV length distribution to PDF
+ggsave(file.path("../", "asv_length_histogram.pdf"), asv_length_plot, width=7, height=5)
+```
+
+
+## Tool and Data Versions
+
+```{r tool_versions, results="asis", echo=FALSE}
+cat("\n# Tool and Data Versions\n")
+cat("\n---\n")
+cat(readLines(classification_info_file), sep = "\n")
+```
